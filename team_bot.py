@@ -15,7 +15,7 @@ import os
 # Khuyên dùng os.environ.get để bảo mật, hoặc điền trực tiếp nếu chạy local
 email = os.environ.get('TEAMS_EMAIL') or "tech.qtdata@gmail.com"
 password = os.environ.get('TEAMS_PASSWORD') or "passnotE@1234"
-message_content = "Thông báo: Reset 15min (Giải lao)"
+message_content = "Testing: Thông báo: Reset 15min (Giải lao)"
 local_tz = pytz.timezone("Asia/Ho_Chi_Minh")
 
 # Danh sách nhóm (Đã cập nhật các nhóm mới)
