@@ -5,6 +5,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.action_chains import ActionChains
 from datetime import datetime
 import time
 import pytz
@@ -37,6 +38,20 @@ def login():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
+    # --- THÊM ĐOẠN NÀY ĐỂ VƯỢT RÀO MICROSOFT ---
+    # Tắt thông báo "Chrome is being controlled..." và ẩn danh tính bot
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+    
+    # Cho phép tất cả Cookie (Teams cực kỳ cần cái này để không bị văng)
+    prefs = {"profile.cookie_controls_mode": 0,
+             "credentials_enable_service": False,      # Tắt popup hỏi lưu pass
+             "profile.password_manager_enabled": False # Tắt trình quản lý mật khẩu
+             } 
+    
+    options.add_experimental_option("prefs", prefs)
+    # -------------------------------------------
     temp_dir = tempfile.mkdtemp()
     options.add_argument(f"--user-data-dir={temp_dir}")
 
@@ -69,6 +84,8 @@ def login():
         pass_input.send_keys(password)
         pass_input.send_keys(Keys.RETURN)
         
+       # ... [Giữ nguyên code từ Bước 1 đến Bước 5] ...
+
         # Bước 5: Vượt qua các màn hình phụ (Stay signed in / No)
         try:
             no_btn = WebDriverWait(driver, 10).until(
@@ -78,11 +95,49 @@ def login():
         except:
             pass
 
-        print("✅ Đăng nhập thành công!")
-        time.sleep(15) # Chờ danh sách chat tải hoàn toàn
+        print("⏳ Đang chờ Microsoft Teams load giao diện...")
+        time.sleep(10) # Chờ 10s xem Teams điều hướng đi đâu
+        
+        # --- THÊM BƯỚC 6 VÀO ĐÂY ---
+        # --- CẬP NHẬT LẠI BƯỚC 6 VÀ BƯỚC 7 ---
+       # Bước 6: Xử lý nếu Teams hiện lỗi "We've run into an issue"
+        try:
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.XPATH, '//*[contains(text(), "Retry") or contains(., "Retry")]'))
+            )
+            print("🔄 Phát hiện lỗi hệ thống. Đang ép trình duyệt tải lại trang (F5)...")
+            time.sleep(2)
+            
+            # --- Cách tải lại trang chống Timeout ---
+            try:
+                # Chỉ cho phép trang tải tối đa 40 giây
+                driver.set_page_load_timeout(40) 
+                # Dùng Javascript để điều hướng thay vì driver.get()
+                driver.execute_script("window.location.replace('https://teams.live.com/v2/');")
+            except Exception as load_e:
+                print("⏳ Trang Teams tải hơi lâu, bỏ qua chờ đợi và tiếp tục chạy...")
+            # ----------------------------------------
+            
+            time.sleep(15) # Chờ Teams load lại giao diện
+        except:
+            pass # Nếu không bị lỗi này thì cứ đi tiếp
+        # Bước 7: Xử lý lỗi văng lại màn hình Welcome
+        try:
+            sign_in_again = driver.find_element(By.XPATH, '//button[contains(., "Sign in")]')
+            print("🔄 Phát hiện bị văng lại màn hình chờ, đang click Sign in lần 2...")
+            sign_in_again.click()
+            time.sleep(15) 
+        except:
+            pass # Không tìm thấy nút Sign in nữa, hy vọng là đã vào được chat!
+        # -------------------------------------
+
+        print("✅ Đăng nhập hoàn tất!")
+        time.sleep(5) 
         return driver
+        
     except Exception as e:
         print(f"❌ Lỗi đăng nhập: {e}")
+        # Nếu ở bước trước bạn đã thêm driver.save_screenshot("error_login.png") thì cứ giữ nguyên nhé
         driver.quit()
         return None
 
