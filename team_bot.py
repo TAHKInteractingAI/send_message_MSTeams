@@ -34,7 +34,12 @@ groups = [
 def login():
     import tempfile
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")  # Chạy ẩn danh trên GitHub Actions
+    # options.add_argument("--headless")  # Chạy ẩn danh trên GitHub Actions
+    options.add_argument(
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    ) # Cập nhật User-Agent mới nhất của Chrome 120 để tránh bị nhận diện là bot
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
@@ -56,6 +61,18 @@ def login():
     options.add_argument(f"--user-data-dir={temp_dir}")
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.execute_cdp_cmd(
+        "Page.addScriptToEvaluateOnNewDocument",
+        {
+            "source": """
+                Object.defineProperty(navigator, 'credentials', {
+                    get: () => undefined
+                });
+
+                window.PublicKeyCredential = undefined;
+            """
+        }
+    )
     driver.get("https://teams.live.com/v2/")
     wait = WebDriverWait(driver, 25)
 
