@@ -34,7 +34,7 @@ groups = [
 def login():
     import tempfile
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")  # Chạy ẩn danh trên GitHub Actions
+    options.add_argument("--headless")  # Chạy ẩn danh trên GitHub Actions
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
