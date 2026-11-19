@@ -26,4 +26,6 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run script
+        env:
+          TEAMS_SESSION: ${{ secrets.TEAMS_SESSION }}
         run: python team_bot.py
