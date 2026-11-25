@@ -226,7 +226,36 @@ def send_message(driver):
         print(f"❌ Lỗi khi gửi tin nhắn: {e}")
 
 
+def is_valid_break_time():
+    now = datetime.now(local_tz)
+    print(f"🕒 Giờ Việt Nam hiện tại: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+
+    if os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
+        print("🛠️ Chạy thủ công (workflow_dispatch) -> Bỏ qua kiểm tra khung giờ.")
+        return True
+
+    # Nếu công ty nghỉ Chủ Nhật, bỏ comment khối dưới:
+    # if now.weekday() == 6:
+    #     print("📅 Hôm nay là Chủ Nhật -> Bỏ qua.")
+    #     return False
+
+    current_minutes = now.hour * 60 + now.minute
+
+    # Khung sáng: 09:40 - 10:00; khung chiều: 15:10 - 15:30.
+    morning_ok = (9 * 60 + 40) <= current_minutes <= (10 * 60)
+    afternoon_ok = (15 * 60 + 10) <= current_minutes <= (15 * 60 + 30)
+
+    if not (morning_ok or afternoon_ok):
+        print("⛔ Ngoài khung giờ giải lao (09:40-10:00 hoặc 15:10-15:30). Hủy gửi tin nhắn!")
+        return False
+
+    return True
+
+
 def job_wrapper():
+    if not is_valid_break_time():
+        return
+
     driver = login()
     if not driver:
         return

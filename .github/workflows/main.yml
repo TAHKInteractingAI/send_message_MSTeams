@@ -1,9 +1,7 @@
 name: Auto Send Microsoft Teams Message
 
 on:
-  schedule:
-    - cron: "45 2 * * *"
-    - cron: "15 8 * * *"
+  repository_dispatch:
   workflow_dispatch:
 
 jobs:
@@ -17,7 +15,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -26,5 +24,7 @@ jobs:
 
       - name: Run script
         env:
+          TZ: Asia/Ho_Chi_Minh
           TEAMS_SESSION: ${{ secrets.TEAMS_SESSION }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: python team_bot.py
