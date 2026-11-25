@@ -10,6 +10,9 @@ on:
 jobs:
   send_message:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
 
     steps:
       - name: Checkout code
@@ -25,7 +28,53 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Skip duplicate repository dispatch
+        id: dedupe
+        if: github.event_name == 'repository_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from datetime import datetime, timezone
+
+          endpoint = (
+              f"repos/{os.environ['GITHUB_REPOSITORY']}"
+              "/actions/workflows/main.yml/runs"
+              "?event=repository_dispatch&status=completed&per_page=10"
+          )
+          response = subprocess.run(
+              ["gh", "api", endpoint],
+              check=True,
+              capture_output=True,
+              text=True,
+          )
+          runs = json.loads(response.stdout)["workflow_runs"]
+          successful_runs = [run for run in runs if run["conclusion"] == "success"]
+
+          if successful_runs:
+              latest_run = max(successful_runs, key=lambda run: run["updated_at"])
+              completed_at = datetime.fromisoformat(
+                  latest_run["updated_at"].replace("Z", "+00:00")
+              )
+              age_seconds = (datetime.now(timezone.utc) - completed_at).total_seconds()
+              if age_seconds < 300:
+                  print(
+                      "Skipping duplicate dispatch: a successful run completed "
+                      f"{age_seconds:.0f} seconds ago."
+                  )
+                  with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+                      output.write("skip=true\n")
+          PY
+
       - name: Run script
+        if: steps.dedupe.outputs.skip != 'true'
         env:
           TEAMS_SESSION: ${{ secrets.TEAMS_SESSION }}
         run: python team_bot.py
+
+concurrency:
+  group: teams-message-${{ github.event_name }}
+  cancel-in-progress: false
